@@ -40,7 +40,11 @@ if (isset($_GET['search'])) {
   $stmt->bindParam(':search', $search);
 } else {
   $current_date = date('Y-m-d');
-  $stmt = $conn->prepare("SELECT formation.id_formation, formation.sujet, formation.categorie, formation.masse_horaire, formation.description, formation.image, session.id_session, session.date_debut, session.date_fin, session.etat FROM inscription JOIN session ON inscription.id_session = session.id_session JOIN formation ON session.id_formation = formation.id_formation WHERE inscription.id_apprenant = :id_apprenant AND (inscription.resultat = 'null') AND session.date_debut > :current_date AND session.etat NOT IN ('en cours', 'clôturée')");
+  $stmt = $conn->prepare("SELECT formation.id_formation, formation.sujet,
+  formation.categorie, formation.masse_horaire, formation.description,
+  formation.image, session.id_session, session.date_debut, session.date_fin,
+  session.etat FROM inscription JOIN session ON inscription.id_session = session.id_session JOIN formation ON session.id_formation = formation.id_formation WHERE inscription.id_apprenant = :id_apprenant AND (inscription.resultat = 'null') AND session.date_debut > :current_date 
+  AND session.etat NOT IN ('en cours', 'clôturée')");
 }
   if (isset($_GET['sujet'])) {
   $subject = $_GET['sujet'];
