@@ -31,44 +31,39 @@
 
 <?php
 
+$current_date = date('Y-m-d');
 
+if (isset($_GET['sujet'])) {
 
+  $category = $conn->quote($_GET['category']);
+  $sujet = $conn->quote($_GET['sujet']);
 
-if (isset($_GET['search'])) {
-  $search = $_GET['search'];
-  $stmt = $conn->prepare("SELECT formation.id_formation, formation.sujet, formation.categorie, formation.masse_horaire, formation.description, formation.image, session.id_session, session.date_debut, session.date_fin FROM inscription JOIN session ON inscription.id_session = session.id_session JOIN formation ON session.id_formation = formation.id_formation WHERE inscription.id_apprenant = :id_apprenant AND (formation.sujet LIKE :search OR formation.categorie LIKE :search)");
-  $stmt->bindParam(':search', $search);
-} else {
-  $current_date = date('Y-m-d');
   $stmt = $conn->prepare("SELECT formation.id_formation, formation.sujet,
-  formation.categorie, formation.masse_horaire, formation.description,
-  formation.image, session.id_session, session.date_debut, session.date_fin,
-  session.etat FROM inscription JOIN session ON inscription.id_session = session.id_session JOIN formation ON session.id_formation = formation.id_formation WHERE inscription.id_apprenant = :id_apprenant AND (inscription.resultat = 'null') AND session.date_debut > :current_date 
-  AND session.etat NOT IN ('en cours', 'clôturée')");
-}
-  if (isset($_GET['sujet'])) {
-  $subject = $_GET['sujet'];
-  $stmt->bindValue(':sujet', "%$subject%");
+    formation.categorie, formation.masse_horaire, formation.description,
+    formation.image, session.id_session, session.date_debut, session.date_fin,
+    session.etat FROM inscription JOIN session ON inscription.id_session = session.id_session JOIN formation ON session.id_formation = formation.id_formation WHERE inscription.id_apprenant = :id_apprenant AND (inscription.resultat = 'null') AND session.date_debut > :current_date 
+    AND session.etat NOT IN ('en cours', 'clôturée') AND formation.categorie = :category AND formation.sujet = :sujet ");
+
+  $stmt->bindParam(':id_apprenant', $id_apprenant);
+
+  $stmt->bindParam(':category', $category);
+  $stmt->bindParam(':sujet', $sujet);
+
+} else {
+
+  $stmt = $conn->prepare("SELECT formation.id_formation, formation.sujet,
+    formation.categorie, formation.masse_horaire, formation.description,
+    formation.image, session.id_session, session.date_debut, session.date_fin,
+    session.etat FROM inscription JOIN session ON inscription.id_session = session.id_session JOIN formation ON session.id_formation = formation.id_formation WHERE inscription.id_apprenant = :id_apprenant AND (inscription.resultat = 'null') AND session.date_debut > :current_date 
+    AND session.etat NOT IN ('en cours', 'clôturée') ");
+
+  $stmt->bindParam(':id_apprenant', $id_apprenant);
+  $stmt->bindParam(':current_date', $current_date);
+
 }
 
-if (isset($_GET['categorie'])) {
-  $subject = $_GET['categorie'];
-  $stmt->bindValue(':categorie', "%$subject%");
-}
-
-
-if (isset($_GET['date_debut']) && isset($_GET['date_fin'])) {
-  $start_date = $_GET['date_debut'];
-  $end_date = $_GET['date_fin'];
-  $stmt->bindValue(':date_debut', $start_date);
-  $stmt->bindValue(':date_fin', $end_date);
-}
-
-$stmt->bindParam(':id_apprenant', $id_apprenant);
-$stmt->bindParam(':current_date', $current_date);
 $stmt->execute();
 $enrollments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 ?>
 <!DOCTYPE html>
 <html>
@@ -90,6 +85,118 @@ $enrollments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 <body>
 
+<?php include 'includ/header.php' ?>
+
+<!-- ***** Header Area Start ***** -->
+
+<?php include 'includ/nav.php' ?>
+
+
+<?php include 'includ/pop_up_profil.php' ?>
+
+
+
+  <?php if (count($enrollments) > 0): ?>
+    <section class="our-courses" id="courses">
+  <div class="container">
+    <div class="row">
+    <div class="col-lg-12">
+  <form method="GET" action="" class="search-form">
+    <div class="form-row">
+      <div class="form-group col-md-4">
+        <label for="subject">Subject</label>
+        <input type="text" class="form-control" name="search" id="sujet" placeholder="Enter subject">
+      </div>
+      <div class="form-group col-md-4">
+        <label for="category">Category</label>
+        <input type="text" class="form-control" name="category" id="categorie" placeholder="Enter category">
+      </div>
+      <div class="form-group col-md-4">
+        <label for="date-range">Date range</label>
+        <div class="input-group">
+          <input type="date" class="form-control" name="date_debut" id="start-date">
+          <div class="input-group-prepend input-group-append">
+            <span class="input-group-text">to</span>
+          </div>
+          <input type="date" class="form-control" name="date_fin" id="end-date">
+        </div>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Search</button>
+  </form>
+</div>
+<?php foreach ($enrollments as $enrollment): ?>
+  <div class="col-md-4">
+    <div class="card mb-4 box-shadow" style="border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 2px 2px rgba(0, 0, 0, 0.3); transition: all 0.3s ease;">
+      <?php if(isset($enrollment['etat']) && $enrollment['etat'] == 'Annulée'): ?>
+        <div class="card-header bg-danger text-white">Annulée</div>
+      <?php endif; ?>
+      <img class="card-img-top w-100 h-75" src="<?php echo $enrollment['image']; ?>" alt="<?php echo $formation['sujet']; ?>" style="height: 200px;">
+      <div class="card-body">
+        <a href="courses-details.php?id=<?php echo $enrollment['id_formation']; ?>">
+          <h4 class="card-title"><?php echo $enrollment['sujet']; ?></h4>
+          <p class="text-muted">Date debut : <?php echo $enrollment['date_debut']; ?> </p>
+          <p class="text-muted">Date fin : <?php echo $enrollment['date_fin']; ?> </p> <br>
+          <p class="card-text"><?php echo $enrollment['description']; ?></p>
+          <div class="d-flex justify-content-between align-items-center">
+            <p class="text-muted"><?php echo $enrollment['categorie']; ?></p> <br>
+            <?php if(isset($enrollment['etat']) && $enrollment['etat'] != 'Annulée'): ?>
+              <form method="post">
+                <button type="submit" name="unenroll" value="<?php echo $enrollment['id_session'] ?>" style="border: none; border-radius: 5px; background-color: #ff0000; color: #ffffff; font-size: 16px; padding: 0.5rem 1rem; transition: all 0.3s ease;">Unsubscribe</button>
+              </form>
+            <?php endif; ?>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+<?php endforeach; ?>
+<div class="col-lg-12">
+  <?php if ($search_string != '' || $category_string != '' || ($start_date != '' && $end_date != '')): ?>
+    <div class="alert alert-info" role="alert">
+      <?php if ($search_string != ''): ?>
+        <p>Search: <?php echo $search_string; ?></p>
+      <?php endif; ?>
+      <?php if ($category_string != ''): ?>
+        <p>Category: <?php echo $category_string; ?></p>
+      <?php endif; ?>
+      <?php if ($start_date != '' && $end_date != ''): ?>
+        <p>Date range: <?php echo $start_date; ?> to <?php echo $end_date; ?></p>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
+</div>
+      <!-- Add your line of code here -->
+  
+    </div>
+  </div>
+</section>
+  <?php else: ?>
+    <section class="our-courses" id="courses">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-12">
+        <div class="section-heading">
+          <h2>My courses</h2>
+        </div>
+      </div>
+      <div class="col-lg-12">
+ 
+     
+       
+      <div class="alert alert-warning" role="alert">
+        You are not registered in any course.
+    </div>  
+    </div>
+  </div>
+</section>
+
+
+  <?php endif; ?>
+ 
+
+   <?php include 'includ\courses.php'; ?>
+   
 <style>
     .search-form {
   margin: 20px 0;
@@ -141,110 +248,5 @@ button[type="submit"]:hover {
   background-color: #0056b3;
 }
 </style>
-<?php include 'includ/header.php' ?>
-
-<!-- ***** Header Area Start ***** -->
-
-<?php include 'includ/nav.php' ?>
-
-
-<?php include 'includ/pop_up_profil.php' ?>
-
-
-<?php if (isset($_GET['search'])): ?>
-<?php endif; ?>
-  <?php if (count($enrollments) > 0): ?>
-    <section class="our-courses" id="courses">
-  <div class="container">
-    <div class="row">
-      <div class="col-lg-12">
-        <div class="section-heading">
-          <h2>My registered courses.                 
-</h2>
-        </div>
-      </div>
-      <div class="col-lg-12">
-      <form method="GET" action="" class="search-form">
-  <div class="form-row">
-    <div class="form-group col-md-4">
-      <label for="subject">Subject</label>
-      <input type="text" class="form-control" name="sujet" id="subject" placeholder="Enter subject">
-    </div>
-    <div class="form-group col-md-4">
-      <label for="subject">categorie</label>
-      <input type="text" class="form-control" name="categorie" id="subject" placeholder="Enter subject">
-    </div>
-
-    <div class="form-group col-md-4">
-      <label for="date-range">Date range</label>
-      <div class="input-group">
-        <input type="date" class="form-control" name="date_debut" id="start-date">
-        <div class="input-group-prepend input-group-append">
-          <span class="input-group-text">to</span>
-        </div>
-        <input type="date" class="form-control" name="date_fin" id="end-date">
-      </div>
-    </div>
-  </div>
-  <button type="submit" class="btn btn-primary">Search</button>
-</form>
-</div>
-<?php foreach ($enrollments as $enrollment): ?>
-  <div class="col-md-4">
-    <div class="card mb-4 box-shadow" style="border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 2px 2px rgba(0, 0, 0, 0.3); transition: all 0.3s ease;">
-      <?php if(isset($enrollment['etat']) && $enrollment['etat'] == 'Annulée'): ?>
-        <div class="card-header bg-danger text-white">Annulée</div>
-      <?php endif; ?>
-      <img class="card-img-top w-100 h-75" src="<?php echo $enrollment['image']; ?>" alt="<?php echo $formation['sujet']; ?>" style="height: 200px;">
-      <div class="card-body">
-        <a href="courses-details.php?id=<?php echo $enrollment['id_formation']; ?>">
-          <h4 class="card-title"><?php echo $enrollment['sujet']; ?></h4>
-          <p class="text-muted">Date debut : <?php echo $enrollment['date_debut']; ?> </p>
-          <p class="text-muted">Date fin : <?php echo $enrollment['date_fin']; ?> </p> <br>
-          <p class="card-text"><?php echo $enrollment['description']; ?></p>
-          <div class="d-flex justify-content-between align-items-center">
-            <p class="text-muted"><?php echo $enrollment['categorie']; ?></p> <br>
-            <?php if(isset($enrollment['etat']) && $enrollment['etat'] != 'Annulée'): ?>
-              <form method="post">
-                <button type="submit" name="unenroll" value="<?php echo $enrollment['id_session'] ?>" style="border: none; border-radius: 5px; background-color: #ff0000; color: #ffffff; font-size: 16px; padding: 0.5rem 1rem; transition: all 0.3s ease;">Unsubscribe</button>
-              </form>
-            <?php endif; ?>
-          </div>
-        </a>
-      </div>
-    </div>
-  </div>
-<?php endforeach; ?>
-
-      <!-- Add your line of code here -->
-  
-    </div>
-  </div>
-</section>
-  <?php else: ?>
-    <section class="our-courses" id="courses">
-  <div class="container">
-    <div class="row">
-      <div class="col-lg-12">
-        <div class="section-heading">
-          <h2>My courses</h2>
-        </div>
-      </div>
-      <div class="col-lg-12">
- 
-     
-       
-      <div class="alert alert-warning" role="alert">
-        You are not registered in any course.
-    </div>  
-    </div>
-  </div>
-</section>
-
-
-  <?php endif; ?>
- 
-
-   <?php include 'includ\courses.php'; ?>
 </body>
 </html>

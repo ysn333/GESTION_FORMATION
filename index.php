@@ -11,22 +11,41 @@
   $stmt->execute();
   $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
+  
+
   if ($result) { 
       if ($result['password'] == $password) {
-
+          $_SESSION['id_formateur'] = $result['id_formateur'];
           $_SESSION['id_apprenant'] = $result['id_apprenant'];
           $_SESSION['firstname'] = $result['firstname'];
           $_SESSION['lastname'] = $result['lastname'];
           $_SESSION['email'] = $result['email'];
           $_SESSION['img'] = $result['img'];
+          $_SESSION['role'] = $result['role'];
+
 
       }
     }
 
+    if (isset($_SESSION['role']) && $_SESSION['role'] == 'user') {
+      // User is an apprenant
+      echo 'Vous êtes un apprenant.';
+    } else if (isset($_SESSION['role']) && $_SESSION['role'] == 'formateur') {
+      // User is a formateur
+      echo 'Vous êtes un formateur.'.''.$_SESSION['id_formateur'];
+    } else if (isset($_SESSION['role']) && $_SESSION['role'] == 'admin') {
+      // User is a admin
+      echo 'Vous êtes un admin.';
+    } else {
+      // User is not logged in
+      echo 'Vous n\'êtes pas connecté.';
+    }
   $firstname = $_SESSION['firstname'];
   $lastname = $_SESSION['lastname'];
   $email =  $_SESSION['email'];
   $img = $_SESSION['img'];
+  $role = $_SESSION['role'];
+
 
 
 
@@ -61,6 +80,9 @@
     <link rel="stylesheet" href="assets/css/owl.css">
     <link rel="stylesheet" href="assets/css/lightbox.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+    <link rel ="icon"  href = "https://www.creativefabrica.com/wp-content/uploads/2020/11/02/Abstract-Logo-Design-Vector-Logo-Graphics-6436279-1-312x208.jpg"  type = "image/x-icon">
+
   </head>
 
 <body>
@@ -98,39 +120,72 @@
         </div>
 
 <?php
-  // Get user input from form submission
-  $sujet = $_GET['sujet'] ?? '';
-  $categorie = $_GET['categorie'] ?? '';
-  $masse_horaire = $_GET['masse_horaire'] ?? '';
 
-  // Set up pagination variables
-  $results_per_page = 6;
-  $current_page = $_GET['page'] ?? 1;
-  $offset = ($current_page - 1) * $results_per_page;
+$sujet = $_GET['sujet'] ?? '';
+$categorie = $_GET['categorie'] ?? '';
+$masse_horaire = $_GET['masse_horaire'] ?? '';
 
-  // Construct base SQL query
-  $query = "SELECT COUNT(*) as total FROM formation";
+// Set up pagination variables
+$results_per_page = 6;
+$current_page = $_GET['page'] ?? 1;
+$offset = ($current_page - 1) * $results_per_page;
+
+// Construct base SQL query
+$query = "SELECT COUNT(*) as total FROM formation";
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$total_results = $stmt->fetchColumn();
+$total_pages = ceil($total_results / $results_per_page);
+
+// add test if formateur
+if ($role == 'formateur') {
+  $query = "SELECT
+    f.id_formation,
+    f.sujet,
+    f.categorie,
+    f.masse_horaire,
+    f.description,
+    f.image,
+    MAX(s.date_debut) AS debut_session,
+    MAX(s.date_fin) AS fin_session
+  FROM formation f
+  JOIN session s ON f.id_formation = s.id_formation
+  WHERE s.id_formateur = ?
+  GROUP BY f.id_formation;";
+  
   $stmt = $conn->prepare($query);
+  $stmt->bindParam(1, $_SESSION['id_formateur']);
   $stmt->execute();
-  $total_results = $stmt->fetchColumn();
-  $total_pages = ceil($total_results / $results_per_page);
+  $formations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}else {
+  $query = "SELECT
+    f.id_formation,
+    f.sujet,
+    f.categorie,
+    f.masse_horaire,
+    f.description,
+    f.image,
+    MAX(s.date_debut) AS debut_session,
+    MAX(s.date_fin) AS fin_session
+  FROM formation f
+  LEFT JOIN session s ON f.id_formation = s.id_formation
+  ";
 
-  $query = "SELECT * FROM formation";
-
-  // Add WHERE clauses based on user input
   $where_clauses = array();
   if (!empty($sujet)) {
-    $where_clauses[] = "sujet LIKE '%$sujet%'";
+    $where_clauses[] = "f.sujet LIKE '%$sujet%'";
   }
   if (!empty($categorie)) {
-    $where_clauses[] = "categorie = '$categorie'";
+    $where_clauses[] = "f.categorie = '$categorie'";
   }
   if (!empty($masse_horaire)) {
-    $where_clauses[] = "masse_horaire = $masse_horaire";
+    $where_clauses[] = "f.masse_horaire = $masse_horaire";
   }
   if (!empty($where_clauses)) {
     $query .= " WHERE " . implode(" AND ", $where_clauses);
   }
+
+  $query .= " GROUP BY f.id_formation";
 
   // Add LIMIT and OFFSET clauses for pagination
   $query .= " LIMIT $results_per_page OFFSET $offset";
@@ -139,8 +194,12 @@
   $stmt = $conn->prepare($query);
   $stmt->execute();
   $formations = $stmt->fetchAll(PDO::FETCH_ASSOC);
-  
+}
+  // Add WHERE clauses based on user input
+
 ?>
+  
+
 
 <!-- index.php -->
 
@@ -169,39 +228,68 @@
 </form>
 
 
-<!-- Display search results -->
-
 <div class="container">
   <div class="d-flex flex-row flex-wrap justify-content-start">
     <?php foreach ($formations as $formation): ?>
-    <div class="col-lg-4 col-md-6 col-sm-12">
-      <div class="meeting-item mb-4">
-        <div class="thumb">
-          <div class="price">
-            <span><?php echo $formation['masse_horaire']; ?> heures</span>
+      <div class="col-lg-4 col-md-6 col-sm-12">
+        <div class="meeting-item mb-4">
+          <div class="thumb">
+          <?php 
+            $query = $conn->prepare('SELECT * FROM `session` WHERE id_formation = :id');
+            $query->bindParam(':id', $formation['id_formation'], PDO::PARAM_INT);
+            $query->execute();
+            $sessions = $query->fetchAll(PDO::FETCH_ASSOC);
+            $has_closed_sessions = false;
+            $has_canceled_sessions = false;
+            for ($i = 0; $i < count($sessions); $i++) {
+              $session = $sessions[$i];
+              if ($session['etat'] == 'clôturée') {
+                $has_closed_sessions = true;
+                $debut_session_date = date(' ( M ', strtotime($session['date_debut']));
+                $closed_session_date = date(' M )', strtotime($session['date_fin']));
+                break;
+              } elseif ($session['etat'] == 'Annulée') {
+                $has_canceled_sessions = true;
+                $debut_session_date = date('( M ', strtotime($session['date_debut']));
+                $canceled_session_date = date(' M )', strtotime($session['date_fin']));
+                break;
+              }
+            }
+            if ($has_closed_sessions && $role == 'formateur'): ?>
+              <div class="alert alert-primary" role="alert">
+                This formation has closed sessions <?php echo $debut_session_date; ?> <?php echo $closed_session_date; ?>.
+              </div>
+            <?php endif; ?>
+            <?php if ($has_canceled_sessions && $role == 'formateur'): ?>
+              <div class="alert alert-danger" role="alert">
+                This formation has canceled sessions <?php echo $debut_session_date; ?> <?php echo $canceled_session_date; ?>.
+              </div>
+            <?php endif; ?>
+            <div class="price">
+              <span><?php echo $formation['masse_horaire']; ?> heures</span>
+            </div>
+            <a href="courses-details.php?id=<?php echo $formation['id_formation']; ?>">
+              <img src="<?php echo $formation['image']; ?>" alt="New Lecturer Meeting" class="meme-img">
+            </a>
           </div>
-          <a href="courses-details.php?id=<?php echo $formation['id_formation']; ?>">
-            <img src="<?php echo $formation['image']; ?>" alt="New Lecturer Meeting" class="meme-img">
-          </a>
-        </div>
-        <div class="down-content">
-          <a href="courses-details.php?id=<?php echo $formation['id_formation']; ?>">
-            <h4><?php echo $formation['sujet']; ?></h4>
-            <h6 id="h6" class="font-italic"><?php echo $formation['categorie']; ?></h6>
-          
-          <p id="pragrath"><?php echo $formation['description']; ?></p>
-          <button class="btnn btn-primary flex-container"><a href="courses-details.php?id=<?php echo $formation['id_formation']; ?>">Learn More</button>
-          </a>
+          <div class="down-content">
+            <a href="courses-details.php?id=<?php echo $formation['id_formation']; ?>">
+              <h4><?php echo $formation['sujet']; ?></h4>
+              <h6 id="h6" class="font-italic"><?php echo $formation['categorie']; ?></h6>
+              <p id="pragrath"><?php echo $formation['description']; ?></p>
+              
+              <?php for ($i = 0; $i < count($sessions); $i++) {
+                $session = $sessions[$i]; ?>
+                <p id="pragrath"><?php echo date('Y , M', strtotime($session['date_debut'])); ?> to <?php echo date(' M ', strtotime($session['date_fin'])); ?></p>
+              <?php } ?>
+              <button class="btnn btn-primary flex-container"><a href="courses-details.php?id=<?php echo $formation['id_formation']; ?>">Learn More</button>
+            </a>
+          </div>
         </div>
       </div>
-    </div>
     <?php endforeach; ?>
   </div>
 </div>
-
-
-
-
 <!-- Add pagination links -->
 
 
@@ -254,7 +342,13 @@
 ?>
 
 <style>
-
+.alert-danger , .alert-primary{
+    padding-left: 8rem;
+    border-top-right-radius: 20px;
+    border-top-left-radius: 20px;
+    margin-bottom: -59px;
+    border-color: #f5c2c7;
+}
 section.our-facts .video img {
   MARGIN-LEFT: 18REM;    padding: 170px 0px;
     max-width: 56px;
@@ -314,6 +408,7 @@ section.our-facts .video img {
   cursor: not-allowed;
 }
 #pragrath {
+  font-style: italic;
   margin-left: 0px;
 
 }

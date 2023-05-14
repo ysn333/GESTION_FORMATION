@@ -22,6 +22,8 @@
   $lastname = $_SESSION['lastname'];
   $email =  $_SESSION['email'];
   $img = $_SESSION['img'];
+  $role = $_SESSION['role'];
+
 
 ?>
 
@@ -49,11 +51,123 @@
     <link rel="stylesheet" href="assets/css/templatemo-edu-meeting.css">
     <link rel="stylesheet" href="assets/css/owl.css">
     <link rel="stylesheet" href="assets/css/lightbox.css">
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha512-pLr+ZzKb+HmPPeVX3jl/dCcbVjHAN3LkU+IYoRn7v6i2Z0jm0t1jvFhXdy7LxtEJyCnXa7OZv9PFUq6tS6Tf8w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   </head>
 
 <body>
+<style>
+  .action {
+    border: 0px solid #ccc;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+  }
+  
+  .enrolled-student {
+    background-color: #f2f2f2;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+  }
+  
+  .enrolled-student p {
+    margin-bottom: 5px;
+  }
+  
+  .button-group {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .button-group button {
+    flex-basis: 49%;
+  }
+  .btnn {
+  margin-right: -71px;
+  background-color: #198754!important;
+  color: #fff;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.bt_n {
+  background-color: #dc3545!important;
+  color: #fff;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
 
+}
+.pragrath {
+  width: 32%;
+}
+
+  .dropdown-toggle {
+    background-color: #ffc107!important;
+  }
+/* Alert box styles */
+.alert {
+  position: relative!important;
+  padding: 1rem 1rem 1rem 2.5rem!important;
+  border: 2px solid transparent!important;
+  border-radius: 0.25rem!important;
+  font-size: 1rem!important;
+  line-height: 1.5!important;
+  margin-bottom: 1rem!important;
+}
+
+.alert-primary {
+  color: #0d6efd!important;
+  background-color: #cfe2ff!important;
+  border-color: #b6d4fe!important;
+}
+
+.alert-dismissible .btn-close {
+  position: absolute!important;
+  top: 0!important;
+  right: 0!important;
+  z-index: 2!important;
+  padding: 1rem!important;
+  color: inherit!important;
+}
+
+/* Validation results container styles */
+.validity-count-container {
+  display: inline-block!important;
+  padding: 0.5rem 1rem!important;
+  border-radius: 0.25rem!important;
+  margin-right: 1rem!important;
+  font-size: 1rem!important;
+  line-height: 1.5!important;
+  color: #fff!important;
+}
+
+.validity-count-container p {
+  margin: 0!important;
+  color: #0f5132!important;
+
+}
+
+.validity-count-container:nth-of-type(1) {
+  background-color: #d1e7dd!important;
+  color: #fff!important;
+}
+
+.validity-count-container:nth-of-type(2) {
+    background-color: #d1e7dd!important;
+    color: #000000!important;
+}
+
+.validity-count-container:nth-of-type(3) {
+    background-color: #d1e7dd!important;
+    color: #000000!important;
+}
+</style>
    
 
   <!-- Sub Header -->
@@ -96,7 +210,7 @@
 
 
   <section class="meetings-page" id="meetings">
-  <form id="join-form" action="join_session.php" method="post">
+
 
   <div class="container">
     <div class="row">
@@ -111,6 +225,9 @@
                 </div>
                 <img src="<?php echo $formation['image']; ?>" alt="<?php echo $formation['sujet']; ?>">
               </div>
+       
+             
+                      
             </div>
             <div class="col-lg-8 col-md-6">
               <div class="down-content">
@@ -145,13 +262,218 @@
                     $query->bindParam(':id_session', $session['id_session'], PDO::PARAM_INT);
                     $query->execute();
                     $num_enrolled = $query->fetch(PDO::FETCH_ASSOC)['num_enrolled'];
-                  ?>
-                  <div class="col-lg-6">
-                    <div class="location">
-                      <h5><span>● </span>  Enrolled Students</h5>
-                      <p><?php echo $num_enrolled; ?></p>
-                    </div>
+
+                    $query = $conn->prepare('SELECT * FROM inscription WHERE id_session = :id_session');
+                    $query->bindParam(':id_session', $session['id_session'], PDO::PARAM_INT);
+                    $query->execute();
+                    $enrolled_students = $query->fetchAll(PDO::FETCH_ASSOC);
+                    ?>
+
+<?php 
+  $query = $conn->prepare('SELECT a.*, i.resultat
+    FROM apprenant a
+    INNER JOIN inscription i ON a.id_apprenant = i.id_apprenant
+    WHERE i.resultat IN ("null", "valid", "invalid") AND i.id_session = :id_session
+  ');
+  $query->bindParam(':id_session', $session['id_session']);
+  $query->execute();
+?>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<?php
+if (  $role == 'formateur' && $session['etat'] == 'clôturée' ): ?>
+
+<div class="col-lg-6">
+  <div class="location">
+
+    <h5><span>● </span> Students</h5>
+  <div id="validation-results-<?php echo $session['id_session']; ?>" class="enrolled-student fade show" role="alert">
+  
+    <center>
+      <strong>Validation Results for Session <?php echo $session['id_session']; ?>:</strong><br><br>
+      <?php 
+        $quey = $conn->prepare('SELECT COUNT(*) as count_valid FROM inscription WHERE resultat = "valid" AND id_session = :id_session');
+        $quey->bindParam(':id_session', $session['id_session']);
+        $quey->execute();
+        $num_valid = $quey->fetch(PDO::FETCH_ASSOC)['count_valid'];
+
+        $qu = $conn->prepare('SELECT COUNT(*) as count_valid FROM inscription WHERE resultat = "null" AND id_session = :id_session');
+        $qu->bindParam(':id_session', $session['id_session']);
+        $qu->execute();
+        $num_uncorrected = $qu->fetch(PDO::FETCH_ASSOC)['count_valid'];
+
+        $quer = $conn->prepare('SELECT COUNT(*) as count_invalid FROM inscription WHERE resultat = "invalid" AND id_session = :id_session');
+        $quer->bindParam(':id_session', $session['id_session']);
+        $quer->execute();
+        $num_invalid = $quer->fetch(PDO::FETCH_ASSOC)['count_invalid'];
+      ?>
+      <div class="validity-count-container">
+        <p>Valid : <?php echo $num_valid; ?></p>
+      </div>
+      <div class="validity-count-container">
+        <p>Invalid : <?php echo $num_invalid; ?></p>
+      </div>
+      <div class="validity-count-container">
+        <p>Not corrected: <?php echo $num_uncorrected; ?></p>
+      </div>
+    </center>
+  </div>
+
+  
+    <div id="apprenants-container">
+
+
+      <?php
+      $num_to_show = 4;
+      $num_shown = 1;
+      $apprenants = $query->fetchAll(PDO::FETCH_ASSOC);
+
+      foreach ($apprenants as $apprenant) {
+        // Display the apprenants that should be visible initially
+        if ($num_shown <= $num_to_show) {
+ 
+          if ($session['etat'] == 'clôturée' && $role == 'formateur') {
+            if ($apprenant['resultat'] == 'null') {
+              echo '
+                <div class="enrolled-student">
+                  <div class="button-group">
+                    <p class="pragrath">'.$num_shown.'. '.$apprenant['firstname'].' '.$apprenant['lastname'].'</p>
+                    <form action="includ/update_valid.php" method="post">
+                      <input type="hidden" name="id_apprenant" value="'.$apprenant['id_apprenant'].'">
+                      <input type="hidden" name="id_session" value="'.$session['id_session'].'">
+                      <div class="button-group">
+                        <button class="btnn btn-success" type="submit">Valid</button>
+                      </div>
+                    </form>
+                    <form action="includ/update_invalid.php" method="post">
+                      <input type="hidden" name="id_apprenant" value="'.$apprenant['id_apprenant'].'">
+                      <input type="hidden" name="id_session" value="'.$session['id_session'].'">
+                      <div class="button-group">
+                        <button class="bt_n btn-danger" type="submit">Invalid</button>
+                      </div>
+                    </form>
                   </div>
+                </div>
+              ';
+            } else {
+              if ($apprenant['resultat'] == 'valid') {
+                echo '
+                <div class="enrolled-student">
+                  <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <strong></strong> '.$num_shown.'. '.$apprenant['firstname'].' '.$apprenant['lastname'].' Valide!
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                </div>
+                ';
+
+              } else {
+                echo '
+                <div class="enrolled-student">
+                  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong></strong> '.$num_shown.'. '.$apprenant['firstname'].' '.$apprenant['lastname'].' Invalide!
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  </div>
+                  ';
+              }
+            }
+          } elseif ($role == 'formateur') {
+            echo '
+              <p class="pragrath">'.$num_shown.'. '.$apprenant['firstname'].' '.$apprenant['lastname'].'</p>
+            ';
+          }
+          $num_shown++;
+        } else {
+          break;
+        }
+      }
+      ?>
+    </div>
+    <?php if (count($apprenants) > $num_to_show) { ?>
+<div class="dropdown">
+  <button class=" btn btn-primary dropdown-toggle" type="button" id="show-more-apprenants" >
+    Show more Students
+  </button>
+</div>
+    <?php } ?>
+  </div>
+</div>
+
+<?php endif; ?>
+<script>
+  var apprenants = <?php echo json_encode($apprenants); ?>;
+  var num_to_show = 4;
+  var num_shown = <?php echo $num_shown; ?>;
+  var id_session = <?php echo $session['id_session']; ?>;
+
+  $('#show-more-apprenants').on('click', function() {
+    var apprenantsContainer = $('#apprenants-container');
+    var numApprenants = apprenants.length;
+    for (var i = num_shown-1; i < num_shown + num_to_show && i < numApprenants; i++) {
+      var apprenant = apprenants[i];
+      // Create the HTML element for the apprenant
+      var apprenantDiv = $('<div>').addClass('enrolled-student');
+      var apprenantText = '';
+      if (apprenant['resultat'] == 'valid') {
+        apprenantText = '<div class="alert alert-success alert-dismissible fade show" role="alert">' +
+                        '<strong></strong> ' + (i+1) + '. ' + apprenant['firstname'] + ' ' + apprenant['lastname'] + ' Valide!' +
+                        '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
+                        '<span aria-hidden="true">&times;</span>' +
+                        '</button>' +
+                        '</div>';
+      } else if (apprenant['resultat'] == 'invalid') {
+        apprenantText = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
+                          '<strong></strong> ' + (i+1) + '. ' + apprenant['firstname'] + ' ' + apprenant['lastname'] + ' Invalide!' +
+                          '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
+                          '<span aria-hidden="true">&times;</span>' +
+                          '</button>' +
+                          '</div>';
+      } else {
+        apprenantText = 
+                        '<div class="button-group">' +
+                        '<p class="pragrath">' + (i+1) + '. ' + apprenant['firstname'] + ' ' + apprenant['lastname'] + '</p>' +
+                        '<form action="includ/update_valid.php" method="post">' +
+                        '<input type="hidden" name="id_apprenant" value="' + apprenant['id_apprenant'] + '">' +
+                        '<input type="hidden" name="id_session" value="' + id_session + '">' +
+                        '<div class="button-group">' +
+                        '<button class="btnn btn-success" type="submit">Valid</button>' +
+                        '</div>' +
+                        '</form>' +
+                        '<form action="includ/update_invalid.php" method="post">' +
+                        '<input type="hidden" name="id_apprenant" value="' + apprenant['id_apprenant'] + '">' +
+                        '<input type="hidden" name="id_session" value="' + id_session + '">' +
+                        '<div class="button-group">' +
+                        '<button class="bt_n btn-danger" type="submit">Invalid</button>' +
+                        '</div>' +
+                        '</form>' +
+                        '</div>';
+      }
+
+      apprenantDiv.append(apprenantText);
+      apprenantsContainer.append(apprenantDiv);
+    }
+    num_shown += num_to_show;
+    if (num_shown >= numApprenants) {
+      $('#show-more-apprenants').hide();
+    }
+  });
+
+
+
+</script>
+
+<div class="col-lg-6">
+  <div class="location action">
+    <h5><span>● </span>  Enrolled Students</h5>
+    
+      <p><?php echo  $num_enrolled ?></p>
+             
+  </div>
+</div>
                   <div class="col-lg-6">
                     <?php 
                       $query = $conn->prepare('SELECT * FROM `formateur` WHERE id_formateur = :id');
@@ -159,16 +481,38 @@
                       $query->execute();
                       $formateur = $query->fetchAll(PDO::FETCH_ASSOC);
                     ?>
-                    <div class="location">
+                    <?php
+                    if (isset($_SESSION['role']) && $_SESSION['role'] == 'formateur') {
+                      echo '';
+                    } else {
+                      echo '
+                      <div class="location">
                       <h5><span>● </span>  Formateur</h5>
-                      <p><?php echo $formateur[0]['firstname'] . ' ' . $formateur[0]['lastname']; ?></p>
+                      <p>'. $formateur[0]['firstname'] . ' ' . $formateur[0]['lastname'] .'</p>
                     </div>
+                            ';                    
+                    }
+                ?>
+                    
                   </div>
                 </div>
-                <p class="description"><?php echo $formation['description']; ?></p>
-                <div class="main-button-red">
-                  <a href="join_session.php?id=<?php echo  $session['id_session']; ?>">Join</a>
-              </div>
+                <?php
+                    if (isset($_SESSION['role']) && $_SESSION['role'] == 'formateur') {
+                      echo '<div class="main-button-red">
+                            </div>';
+                    } else {
+                      echo '
+                      <form id="join-form" action="join_session.php" method="post">
+                      <div class="main-button-red">
+                              <a href="join_session.php?id=' . $session['id_session'] . '">Join</a>
+                            </div>
+                            </form>
+                            ';                    
+                    }
+                ?>
+
+
+                
             </div>
             </div>
           </div>
@@ -187,10 +531,17 @@
           Distibuted By: <a href="https://themewagon.com" target="_blank" title="Build Better UI, Faster">Solicode</a>
         </p>
     </div>
-    </form>
   </section>
 
   <style>
+    .pragrath {
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    #validation-results {
+      display: none;
+    }
       /* Style for the meetings-page section */
       span {
         color: #ffc107;
@@ -239,7 +590,7 @@
 
       .meetings-page .hours,
       .meetings-page .location {
-        margin-bottom: 20px;
+        margin-bottom: 30px;
       }
 
       .meetings-page .share {
@@ -320,6 +671,8 @@
         }
 
         .meeting-single-item .down-content p {
+          margin-left: 1rem;
+          font-size: 14.5px;
           color: #666;
           line-height: 1.8em;
           margin-bottom: 0;
@@ -374,6 +727,10 @@
             font-size: 36px;
             font-weight: bold;
             color: #ffc107;
+            font-size: 28px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
     </style>
   <!-- Scripts -->
@@ -434,5 +791,6 @@
           checkSection();
         });
     </script>
+    
   </body>
 </html>

@@ -15,10 +15,22 @@
                           <li class="scroll-to-section"><a href="#courses">Courses</a></li> 
                           <li class="scroll-to-section"><a href="#apply"> Meeting</a></li>
                           <li class="scroll-to-section"><a href="#contact">Contact Us</a></li>
-                          <li class="has-sub">
+                          <?php if ($_SESSION['role'] == "formateur"): ?> 
+                            <li class="has-sub">
                               <a href="javascript:void(0)">Profil</a>
                               <ul class="sub-menu">
-                                
+                                  <li><a id='includ/course_closed' href="course_closed.php">course closed</a></li>
+                                  <li><a id='includ/current_training' href="current_training.php">current training.</a></li>
+                                  <!-- <li><a id='My_registered_courses' href="My_history_courses.php">My history </a></li> -->
+                                  
+                                  <li><a id='logout' href="includ/logout.php">logout</a></li>
+
+                              </ul>
+                          </li> 
+                          <?php else : ?>
+                            <li class="has-sub">
+                              <a href="javascript:void(0)">Profil</a>
+                              <ul class="sub-menu">
                                   <li id='profil'><button type="button" class="  bt btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal"> <img id="img_profil" src="files/profiles/<?php echo $img ?>" alt=""><?php echo ' '. $firstname . ' ' . $lastname ; ?></button></li>
                                   <li><a id='My_registered_courses' href="My_registered_courses.php">My registered</a></li>
                                   <li><a id='My_registered_courses' href="My_current_training.php">My current training.</a></li>
@@ -28,6 +40,9 @@
 
                               </ul>
                           </li> 
+                          <?php endif ?>
+
+                          
                       </ul>        
                       <a class='menu-trigger'>
                           <span>Menu</span>
