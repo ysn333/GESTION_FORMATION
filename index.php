@@ -29,10 +29,10 @@
 
     if (isset($_SESSION['role']) && $_SESSION['role'] == 'user') {
       // User is an apprenant
-      echo 'Vous êtes un apprenant.';
+      echo '';
     } else if (isset($_SESSION['role']) && $_SESSION['role'] == 'formateur') {
       // User is a formateur
-      echo 'Vous êtes un formateur.'.''.$_SESSION['id_formateur'];
+      echo '';
     } else if (isset($_SESSION['role']) && $_SESSION['role'] == 'admin') {
       // User is a admin
       echo 'Vous êtes un admin.';
